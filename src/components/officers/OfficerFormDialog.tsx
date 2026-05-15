@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { FieldError } from "@/components/ui/FieldError";
@@ -12,6 +11,7 @@ import {
   type OfficerFormValues,
   validateOfficerForm,
 } from "@/utils/validation";
+import { useState } from "react";
 
 type OfficerFormDialogProps = {
   isOpen: boolean;
@@ -113,8 +113,13 @@ export function OfficerFormDialog({
 
         <FormRow label="Điện thoại">
           <Input
+            inputMode="numeric"
+            maxLength={11}
+            pattern="[0-9]*"
             value={values.phone}
-            onChange={(event) => updateValue("phone", event.target.value)}
+            onChange={(event) =>
+              updateValue("phone", event.target.value.replace(/\D/g, ""))
+            }
           />
           <FieldError message={errors.phone} />
         </FormRow>

@@ -17,9 +17,19 @@ import type { Officer, Position } from "@/types/officer";
 import { paginateOfficers } from "@/utils/pagination";
 import { loadPaginatedOfficers, savePaginatedOfficers } from "@/utils/storage";
 import type { OfficerFormValues } from "@/utils/validation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialSearchParamsRef = useRef(searchParams);
   const [initialData] = useState(() =>
     paginateOfficers(INITIAL_OFFICERS, 1, PAGE_SIZE),
   );
@@ -38,9 +48,21 @@ export default function Home() {
   useEffect(() => {
     const timerId = window.setTimeout(() => {
       const storedData = loadPaginatedOfficers();
+      const initialSearchParams = initialSearchParamsRef.current;
+      const nextPageSize = getValidPageSize(
+        initialSearchParams.get("pageSize"),
+        storedData.pageSize,
+      );
+      const nextPage = getValidPage(initialSearchParams.get("page"), storedData.page);
+      const nextPagination = paginateOfficers(
+        storedData.items,
+        nextPage,
+        nextPageSize,
+      );
+
       setOfficers(storedData.items);
-      setCurrentPage(storedData.page);
-      setPageSize(storedData.pageSize);
+      setCurrentPage(nextPagination.page);
+      setPageSize(nextPagination.pageSize);
       setIsHydrated(true);
     }, 0);
 
@@ -50,6 +72,26 @@ export default function Home() {
   const paginatedData = useMemo(
     () => paginateOfficers(officers, currentPage, pageSize),
     [currentPage, officers, pageSize],
+  );
+
+  const updatePaginationUrl = useCallback(
+    (nextPage: number, nextPageSize: number) => {
+      const params = new URLSearchParams(window.location.search);
+      const nextPageValue = String(nextPage);
+      const nextPageSizeValue = String(nextPageSize);
+
+      if (
+        params.get("page") === nextPageValue &&
+        params.get("pageSize") === nextPageSizeValue
+      ) {
+        return;
+      }
+
+      params.set("page", nextPageValue);
+      params.set("pageSize", nextPageSizeValue);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router],
   );
 
   useEffect(() => {
@@ -154,6 +196,7 @@ export default function Home() {
   function handlePageSizeChange(nextPageSize: number) {
     setPageSize(nextPageSize);
     setCurrentPage(1);
+    updatePaginationUrl(1, nextPageSize);
   }
 
   function handleResetConfirm() {
@@ -162,6 +205,7 @@ export default function Home() {
     setPageSize(PAGE_SIZE);
     setIsResetDialogOpen(false);
     showToast("Đã reset dữ liệu ban đầu");
+    updatePaginationUrl(1, PAGE_SIZE);
   }
 
   return (
@@ -198,7 +242,10 @@ export default function Home() {
           pageSizeOptions={PAGE_SIZE_OPTIONS}
           totalPages={paginatedData.totalPages}
           totalItems={paginatedData.totalItems}
-          onPageChange={setCurrentPage}
+          onPageChange={(nextPage) => {
+            setCurrentPage(nextPage);
+            updatePaginationUrl(nextPage, pageSize);
+          }}
           onPageSizeChange={handlePageSizeChange}
         />
       </div>
@@ -231,4 +278,24 @@ export default function Home() {
       <Toast message={toastMessage} />
     </main>
   );
+}
+
+function getValidPage(value: string | null, fallback: number) {
+  const page = Number(value);
+
+  if (Number.isInteger(page) && page >= 1) {
+    return page;
+  }
+
+  return fallback;
+}
+
+function getValidPageSize(value: string | null, fallback: number) {
+  const pageSize = Number(value);
+
+  if (PAGE_SIZE_OPTIONS.includes(pageSize)) {
+    return pageSize;
+  }
+
+  return fallback;
 }
