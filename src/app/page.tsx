@@ -1,65 +1,234 @@
-import Image from "next/image";
+"use client";
+
+import { DeleteConfirmDialog } from "@/components/officers/DeleteConfirmDialog";
+import { OfficerFormDialog } from "@/components/officers/OfficerFormDialog";
+import { OfficerTable } from "@/components/officers/OfficerTable";
+import { Pagination } from "@/components/officers/Pagination";
+import { PositionDialog } from "@/components/officers/PositionDialog";
+import { ResetConfirmDialog } from "@/components/officers/ResetConfirmDialog";
+import { Button } from "@/components/ui/Button";
+import { Toast } from "@/components/ui/Toast";
+import {
+  INITIAL_OFFICERS,
+  PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+} from "@/constants/officers";
+import type { Officer, Position } from "@/types/officer";
+import { paginateOfficers } from "@/utils/pagination";
+import { loadPaginatedOfficers, savePaginatedOfficers } from "@/utils/storage";
+import type { OfficerFormValues } from "@/utils/validation";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function Home() {
+  const [initialData] = useState(() =>
+    paginateOfficers(INITIAL_OFFICERS, 1, PAGE_SIZE),
+  );
+  const [officers, setOfficers] = useState<Officer[]>(initialData.items);
+  const [currentPage, setCurrentPage] = useState(initialData.page);
+  const [pageSize, setPageSize] = useState(initialData.pageSize);
+  const [editingOfficer, setEditingOfficer] = useState<Officer | null>(null);
+  const [isOfficerDialogOpen, setIsOfficerDialogOpen] = useState(false);
+  const [positionOfficer, setPositionOfficer] = useState<Officer | null>(null);
+  const [deleteOfficer, setDeleteOfficer] = useState<Officer | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      const storedData = loadPaginatedOfficers();
+      setOfficers(storedData.items);
+      setCurrentPage(storedData.page);
+      setPageSize(storedData.pageSize);
+      setIsHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, []);
+
+  const paginatedData = useMemo(
+    () => paginateOfficers(officers, currentPage, pageSize),
+    [currentPage, officers, pageSize],
+  );
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    savePaginatedOfficers(paginatedData);
+  }, [isHydrated, paginatedData]);
+
+  function showToast(message: string) {
+    setToastMessage(message);
+
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage("");
+      toastTimerRef.current = null;
+    }, 2500);
+  }
+
+  function openCreateDialog() {
+    setEditingOfficer(null);
+    setIsOfficerDialogOpen(true);
+  }
+
+  function openEditDialog(officer: Officer) {
+    setEditingOfficer(officer);
+    setIsOfficerDialogOpen(true);
+  }
+
+  function closeOfficerDialog() {
+    setIsOfficerDialogOpen(false);
+    setEditingOfficer(null);
+  }
+
+  function handleOfficerSubmit(values: OfficerFormValues) {
+    if (editingOfficer) {
+      setOfficers((currentOfficers) =>
+        currentOfficers.map((officer) =>
+          officer.id === editingOfficer.id
+            ? { ...officer, ...values }
+            : officer,
+        ),
+      );
+    } else {
+      setOfficers((currentOfficers) => [
+        ...currentOfficers,
+        {
+          ...values,
+          id: `officer-${Date.now()}`,
+          position: "Nhân viên",
+        },
+      ]);
+      setCurrentPage(Math.ceil((officers.length + 1) / pageSize));
+      showToast("Thêm cán bộ thành công");
+      closeOfficerDialog();
+      return;
+    }
+
+    showToast("Cập nhật cán bộ thành công");
+    closeOfficerDialog();
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteOfficer) {
+      return;
+    }
+
+    const nextOfficers = officers.filter(
+      (officer) => officer.id !== deleteOfficer.id,
+    );
+    setOfficers(nextOfficers);
+    setCurrentPage((currentValue) =>
+      Math.min(
+        currentValue,
+        Math.max(Math.ceil(nextOfficers.length / pageSize), 1),
+      ),
+    );
+    setDeleteOfficer(null);
+    showToast("Xóa cán bộ thành công");
+  }
+
+  function handlePositionSubmit(position: Position, appointedDate: string) {
+    if (!positionOfficer) {
+      return;
+    }
+
+    setOfficers((currentOfficers) =>
+      currentOfficers.map((officer) =>
+        officer.id === positionOfficer.id
+          ? { ...officer, position, appointedDate }
+          : officer,
+      ),
+    );
+    setPositionOfficer(null);
+    showToast("Cập nhật chức vụ thành công");
+  }
+
+  function handlePageSizeChange(nextPageSize: number) {
+    setPageSize(nextPageSize);
+    setCurrentPage(1);
+  }
+
+  function handleResetConfirm() {
+    setOfficers(INITIAL_OFFICERS);
+    setCurrentPage(1);
+    setPageSize(PAGE_SIZE);
+    setIsResetDialogOpen(false);
+    showToast("Đã reset dữ liệu ban đầu");
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-8 text-center">
+          <p className="font-semibold uppercase">Đại học Cần Thơ</p>
+          <p className="font-semibold uppercase">
+            Trung tâm Công nghệ Phần mềm
           </p>
+          <h1 className="mt-6 text-3xl font-bold uppercase">
+            Danh sách Cán bộ
+          </h1>
+        </header>
+
+        <div className="mb-3 flex justify-end">
+          <Button variant="danger" onClick={() => setIsResetDialogOpen(true)}>
+            Reset dữ liệu
+          </Button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        <OfficerTable
+          officers={paginatedData.visibleItems}
+          startIndex={paginatedData.startIndex}
+          onCreate={openCreateDialog}
+          onEdit={openEditDialog}
+          onDelete={setDeleteOfficer}
+          onUpdatePosition={setPositionOfficer}
+        />
+
+        <Pagination
+          page={paginatedData.page}
+          pageSize={paginatedData.pageSize}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          totalPages={paginatedData.totalPages}
+          totalItems={paginatedData.totalItems}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      </div>
+
+      {isOfficerDialogOpen ? (
+        <OfficerFormDialog
+          isOpen={isOfficerDialogOpen}
+          editingOfficer={editingOfficer}
+          onCancel={closeOfficerDialog}
+          onSubmit={handleOfficerSubmit}
+        />
+      ) : null}
+      {positionOfficer ? (
+        <PositionDialog
+          officer={positionOfficer}
+          onCancel={() => setPositionOfficer(null)}
+          onSubmit={handlePositionSubmit}
+        />
+      ) : null}
+      <DeleteConfirmDialog
+        officer={deleteOfficer}
+        onCancel={() => setDeleteOfficer(null)}
+        onConfirm={handleDeleteConfirm}
+      />
+      <ResetConfirmDialog
+        isOpen={isResetDialogOpen}
+        onCancel={() => setIsResetDialogOpen(false)}
+        onConfirm={handleResetConfirm}
+      />
+      <Toast message={toastMessage} />
+    </main>
   );
 }
