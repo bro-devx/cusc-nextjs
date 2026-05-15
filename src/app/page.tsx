@@ -19,6 +19,7 @@ import { loadPaginatedOfficers, savePaginatedOfficers } from "@/utils/storage";
 import type { OfficerFormValues } from "@/utils/validation";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -27,6 +28,14 @@ import {
 } from "react";
 
 export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <OfficerManagement />
+    </Suspense>
+  );
+}
+
+function OfficerManagement() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialSearchParamsRef = useRef(searchParams);
