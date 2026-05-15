@@ -13,7 +13,7 @@ export function ResetConfirmDialog({
   onConfirm,
 }: ResetConfirmDialogProps) {
   return (
-    <Dialog isOpen={isOpen} title="Reset dữ liệu">
+    <Dialog isOpen={isOpen} onClose={onCancel} title="Reset dữ liệu">
       <div className="border-b border-slate-900 p-5 text-center">
         <p className="font-bold">Bạn có chắc chắn muốn reset dữ liệu không?</p>
         <p className="mt-2 text-slate-700">

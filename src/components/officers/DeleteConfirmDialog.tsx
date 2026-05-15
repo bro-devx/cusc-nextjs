@@ -14,7 +14,7 @@ export function DeleteConfirmDialog({
   onConfirm,
 }: DeleteConfirmDialogProps) {
   return (
-    <Dialog isOpen={Boolean(officer)} title="Xóa cán bộ">
+    <Dialog isOpen={Boolean(officer)} onClose={onCancel} title="Xóa cán bộ">
       <div className="border-b border-slate-900 p-5 text-center font-bold">
         Bạn có chắc chắn muốn xóa cán bộ này không?
         {officer ? (

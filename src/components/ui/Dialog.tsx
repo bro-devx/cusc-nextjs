@@ -1,11 +1,29 @@
 import type { PropsWithChildren } from "react";
+import { useEffect } from "react";
 
 type DialogProps = PropsWithChildren<{
   isOpen: boolean;
+  onClose?: () => void;
   title: string;
 }>;
 
-export function Dialog({ children, isOpen, title }: DialogProps) {
+export function Dialog({ children, isOpen, onClose, title }: DialogProps) {
+  useEffect(() => {
+    if (!isOpen || !onClose) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }

@@ -60,7 +60,7 @@ export function OfficerFormDialog({
   }
 
   return (
-    <Dialog isOpen={isOpen} title="Thêm mới/cập nhật Cán bộ">
+    <Dialog isOpen={isOpen} onClose={onCancel} title="Thêm mới/cập nhật Cán bộ">
       <form
         onSubmit={(event) => {
           event.preventDefault();

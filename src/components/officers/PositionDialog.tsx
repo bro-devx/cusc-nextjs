@@ -27,7 +27,7 @@ export function PositionDialog({
   );
 
   return (
-    <Dialog isOpen={Boolean(officer)} title="Cập nhật chức vụ">
+    <Dialog isOpen={Boolean(officer)} onClose={onCancel} title="Cập nhật chức vụ">
       <form
         onSubmit={(event) => {
           event.preventDefault();
